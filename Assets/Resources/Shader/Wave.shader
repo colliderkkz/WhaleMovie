@@ -2,33 +2,42 @@ Shader "Custom/WaveWithReflection"
 {
     Properties
     {
-        _Smoothness("Light Smoothness", Range(8,256)) = 64
-        _SpecularColor("Specular Color", Color) = (0.5,0.5,0.5,1)
+        [Enum(UnityEngine.Rendering.CullMode)] _Cull("Render Face", Float) = 2
+        _Smoothness("Light Smoothness", Range(8,256)) = 42
+        _SpecularColor("Specular Color", Color) = (1,1,1,1)
 
-        _WaveCount("Wave Count", int) = 16
-        _RandomDirection("Random Direction", Range(0,1)) = 1
-        _WavelengthMax("WaveLength Max", Range(0,5)) = 5
-        _WavelengthMin("WaveLength Min", Range(0,5)) = 1
-        _WavesteepnessMax("WaveSteepness Max", Range(0,10)) = 3
-        _WavesteepnessMin("WaveSteepness Min", Range(0,1)) = 0
-        _WaveSpeed("Wave Speed", Range(0,3)) = 1.0
+        _WaveCount("Wave Count", int) = 30
+        _RandomDirection("Random Direction", Range(0,1)) = 0.94
+        _WavelengthMax("WaveLength Max", Range(0,20)) = 12
+        _WavelengthMin("WaveLength Min", Range(0,5)) = 2.2
+        _WavesteepnessMax("WaveSteepness Max", Range(0,10)) = 0.72
+        _WavesteepnessMin("WaveSteepness Min", Range(0,1)) = 0.08
+        _WaveSpeed("Wave Speed", Range(0,3)) = 0.48
         _Direction("Direction", Vector) = (1,1,0,0)
 
-        _BaseColor("Base Color", Color) = (0.0,0.5,1.0,1)
+        _BaseColor("Base Color", Color) = (0.64465404,0.97253376,1,1)
 
         _RampTex("Depth Ramp", 2D) = "white" {}
-        _SceneDepth("Depth Range", Float) = 5
-        _RefractionIntensity("Refraction Intensity", Range(0,0.1)) = 0.02
+        _SceneDepth("Depth Range", Float) = 5.57
+        _SeabedFadeStart("Seabed Fade Start (m)", Float) = 3
+        _SeabedFadeMid("Seabed Fade Mid (m)", Float) = 8
+        _SeabedFadeEnd("Seabed Hidden At (m)", Float) = 10
+        _SeabedMidVisibility("Seabed Visibility At Mid", Range(0,1)) = 0.2
+        _RefractionIntensity("Refraction Intensity", Range(0,0.1)) = 0.0405 // ÊäòÂ∞ÑÂèÇÊï∞
         _RefractionGradientRange("Refraction Depth Range", Float) = 2
 
         _NormalMap("Normal Map", 2D) = "bump" {}
-        _NormalScale("Normal Strength", Range(0,2)) = 1
-        _NormalTiling("Normal Tiling", Float) = 4
-        _NormalSpeed("Normal Speed", Float) = 0.2
+        _NormalScale("Normal Strength", Range(0,2)) = 1.15
+        _NormalTiling("Normal Tiling", Float) = 0.55
+        _NormalSpeed("Normal Speed", Float) = 0.06
 
-        // ===== –¬‘ˆ£∫∑¥…‰ Ù–‘ =====
-        _ReflectionIntensity("Reflection Intensity", Range(0,1)) = 0.5
-        _ReflectionDistortion("Reflection Distortion", Range(0,1)) = 0.1
+        // ===== Êñ∞Â¢ûÔºöÂèçÂ∞ÑÂ±ûÊÄß =====
+        _ReflectionIntensity("Reflection Intensity", Range(0,1)) = 0.38
+        _ReflectionDistortion("Reflection Distortion", Range(0,1)) = 0.25
+        _ReflectionRoughness("Reflection Roughness", Range(0,1)) = 0.1
+        _PlanarReflectionStrength("Scene Reflection Strength", Range(0,1)) = 0.78
+        _RefractionVisibility("Scene Refraction Visibility", Range(0,1)) = 0.535
+        _WarmStreakStrength("Warm Streak Strength", Range(0,0.4)) = 0.4
     }
 
     SubShader
@@ -42,6 +51,7 @@ Shader "Custom/WaveWithReflection"
 
         Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
+        Cull [_Cull]
 
         Pass
         {
@@ -50,7 +60,7 @@ Shader "Custom/WaveWithReflection"
             #pragma fragment frag
             #pragma multi_compile_instancing
             
-            // ±ÿ–Î∞¸∫¨¥Àø‚“‘ π”√∑¥…‰ÃΩ’Î/ÃÏø’∫–≤…—˘∫Ø ˝
+            // ÂøÖÈ°ªÂåÖÂê´Ê≠§Â∫ì‰ª•‰ΩøÁî®ÂèçÂ∞ÑÊé¢Èíà/Â§©Á©∫ÁõíÈááÊ†∑ÂáΩÊï∞
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
@@ -85,18 +95,34 @@ Shader "Custom/WaveWithReflection"
             float4 _Direction;
             half4 _BaseColor;
             float _SceneDepth;
+            float _SeabedFadeStart;
+            float _SeabedFadeMid;
+            float _SeabedFadeEnd;
+            float _SeabedMidVisibility;
             float _RefractionIntensity;
             float _RefractionGradientRange;
             float _NormalScale;
             float _NormalTiling;
             float _NormalSpeed;
-            // –¬‘ˆ
+            // Êñ∞Â¢û
             float _ReflectionIntensity;
             float _ReflectionDistortion;
+            float _ReflectionRoughness;
+            float _PlanarReflectionStrength;
+            float _RefractionVisibility;
+            float _WarmStreakStrength;
             CBUFFER_END
 
             TEXTURE2D(_RampTex); SAMPLER(sampler_RampTex);
             TEXTURE2D(_NormalMap); SAMPLER(sampler_NormalMap);
+            TEXTURE2D(_WaterReflectionLeft); SAMPLER(sampler_WaterReflectionLeft);
+            TEXTURE2D(_WaterReflectionRight); SAMPLER(sampler_WaterReflectionRight);
+            TEXTURE2D(_WaterRefractionLeft); SAMPLER(sampler_WaterRefractionLeft);
+            TEXTURE2D(_WaterRefractionRight); SAMPLER(sampler_WaterRefractionRight);
+            float4x4 _WaterReflectionVPLeft;
+            float4x4 _WaterReflectionVPRight;
+            float _WaterCaptureReady;
+            float _WaterCapturePass;
 
             float Random(int seed)
             {
@@ -117,16 +143,16 @@ Shader "Custom/WaveWithReflection"
                 for (int i = 0; i < waveCount; i++)
                 {
                     float step = (float)i / (float)waveCount;
-                    float2 d = float2(Random(i), Random(2*i));
+                    float2 d = float2(Random(13*i+1), Random(17*i+7));
                     d = normalize(lerp(normalize(direction.xy), d, randomdirection));
-                    float wavelength = lerp(wavelengthMax, wavelengthMin, step);
+                    float wavelength = max(lerp(wavelengthMax, wavelengthMin, step) * (1.0 + 0.16 * Random(11*i+17)), 0.1);
                     float steepness = lerp(steepnessMax, steepnessMin, step)/waveCount;
                     float k = 2 * PI / wavelength;
                     float g = 9.81f;
                     float w = sqrt(g * k);
                     float a = steepness / k;
                     float2 wavevector = k * d;
-                    float value = dot(wavevector, positionWS.xz) - w * _Time.y * _WaveSpeed;
+                    float value = dot(wavevector, positionWS.xz + float2(i * 1.73, i * 0.97)) - w * _Time.y * _WaveSpeed;
                     P.x += d.x * a * cos(value);
                     P.z += d.y * a * cos(value);
                     P.y += a * sin(value);
@@ -159,64 +185,125 @@ Shader "Custom/WaveWithReflection"
                 return OUT;
             }
 
-            half4 frag (Varings IN) : SV_Target
+            half4 frag (Varings IN, FRONT_FACE_TYPE facing : FRONT_FACE_SEMANTIC) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
+                clip(0.5 - _WaterCapturePass);
                 Light light = GetMainLight();
                 float3 viewDirWS = normalize(GetWorldSpaceViewDir(IN.positionWS));
                 
-                // ===== 1. ∑®œﬂ»≈∂Ø =====
+                // ===== 1. Ê≥ïÁ∫øÊâ∞Âä® =====
                 float2 uv = IN.positionWS.xz * _NormalTiling;
-                float2 uv1 = uv + _Time.y * _NormalSpeed;
-                float2 uv2 = uv - _Time.y * _NormalSpeed * 0.7;
+                float2 uv1 = uv + _Time.y * _NormalSpeed * float2(0.7, 0.3);
+                float2 uv2 = float2(-uv.y, uv.x) * 0.82 + _Time.y * _NormalSpeed * float2(-0.4, 0.6);
                 float3 n1 = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, uv1));
                 float3 n2 = UnpackNormal(SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, uv2));
-                float3 normalTS = normalize(n1 + n2);
+                float2 detailNormal = 0.5 * (n1.xy + float2(n2.y, -n2.x)) * _NormalScale;
                 
-                // ªÏ∫œ≤®¿À∑®œﬂ∫ÕŒ¢≤®∑®œﬂ
-                float3 normalWS = normalize(IN.normalWS + normalTS * _NormalScale);
+                // Ê∑∑ÂêàÊ≥¢Êµ™Ê≥ïÁ∫øÂíåÂæÆÊ≥¢Ê≥ïÁ∫ø
+                float3 normalWS = normalize(IN.normalWS + float3(detailNormal.x, 0, detailNormal.y));
+                normalWS *= IS_FRONT_VFACE(facing, 1.0, -1.0);
 
-                // ===== 2. ∑¥…‰ (Skybox/Reflection Probe) =====
-                //  π”√»≈∂Ø∫Ûµƒ∑®œﬂº∆À„∑¥…‰œÚ¡ø
+                // ===== 2. ÂèçÂ∞Ñ (Skybox/Reflection Probe) =====
+                // ‰ΩøÁî®Êâ∞Âä®ÂêéÁöÑÊ≥ïÁ∫øËÆ°ÁÆóÂèçÂ∞ÑÂêëÈáè
                 float3 reflectDir = reflect(-viewDirWS, normalWS);
-                // ∂‘∑¥…‰œÚ¡øÃÌº”“ªµ„ª˘”⁄∑®œﬂµƒ≈§«˙
-                reflectDir.xz += normalTS.xz * _ReflectionDistortion;
+                // ÂØπÂèçÂ∞ÑÂêëÈáèÊ∑ªÂä†‰∏ÄÁÇπÂü∫‰∫éÊ≥ïÁ∫øÁöÑÊâ≠Êõ≤
+                reflectDir.xz += detailNormal * _ReflectionDistortion;
                 
-                // ≤…—˘ª∑æ≥∑¥…‰ (URPƒ⁄÷√∫Ø ˝)
-                half3 reflection = GlossyEnvironmentReflection(reflectDir, 0.0, 1.0); 
+                // ÈááÊ†∑ÁéØÂ¢ÉÂèçÂ∞Ñ (URPÂÜÖÁΩÆÂáΩÊï∞)
+                half3 reflection = GlossyEnvironmentReflection(normalize(reflectDir), _ReflectionRoughness, 1.0);
 
-                // ===== 3. …Ó∂»”Î’€…‰ =====
+                // ===== 3. Ê∑±Â∫¶‰∏éÊäòÂ∞Ñ =====
                 float2 screenUV = IN.projPos.xy / IN.projPos.w;
-                float sceneZ = LinearEyeDepth(SampleSceneDepth(screenUV), _ZBufferParams);
+                float rawSceneDepth = SampleSceneDepth(screenUV);
+                float sceneZ = LinearEyeDepth(rawSceneDepth, _ZBufferParams);
                 float waterZ = IN.projPos.z;
                 float depthDiff = saturate((sceneZ - waterZ) / _SceneDepth);
 
-                float2 offset = normalWS.xz * _RefractionIntensity;
-                offset *= saturate(depthDiff / abs(_RefractionGradientRange) + 0.001);
-                float2 refractUV = screenUV + offset;
+                // Use vertical world-space depth for the seabed fade. The existing
+                // eye-space depth range above continues to drive the color ramp.
+                #if UNITY_REVERSED_Z
+                    float sceneDepthNDC = rawSceneDepth;
+                #else
+                    float sceneDepthNDC = lerp(UNITY_NEAR_CLIP_VALUE, 1.0, rawSceneDepth);
+                #endif
+                float3 scenePositionWS = ComputeWorldSpacePosition(screenUV, sceneDepthNDC, UNITY_MATRIX_I_VP);
+                float seabedDepth = sceneZ > waterZ ? max(IN.positionWS.y - scenePositionWS.y, 0.0) : 0.0;
+                float fadeMid = max(_SeabedFadeMid, _SeabedFadeStart + 0.001);
+                float fadeEnd = max(_SeabedFadeEnd, fadeMid + 0.001);
+                float midBlend = smoothstep(_SeabedFadeStart, fadeMid, seabedDepth);
+                float endBlend = smoothstep(fadeMid, fadeEnd, seabedDepth);
+                float seabedVisibility = lerp(1.0, _SeabedMidVisibility, midBlend) * (1.0 - endBlend);
+
+                // Depth Range is measured in eye-space metres. A smooth falloff
+                // keeps the control responsive even when the seabed is farther away.
+                float depthBehindWater = max(sceneZ - waterZ, 0.0);
+                float refractionFade = depthBehindWater / (depthBehindWater + max(_RefractionGradientRange, 0.001));
+                float2 offset = normalWS.xz * (_RefractionIntensity * refractionFade);// Ê≥ïÁ∫øÂÜ≥ÂÆöÂÅèÁßªÊñπÂêë
+                float2 refractUV = screenUV + offset;// ÊîπÂèòÂèñÊôØ‰ΩçÁΩÆ
                 
                 float sceneZ2 = LinearEyeDepth(SampleSceneDepth(refractUV), _ZBufferParams);
                 if (sceneZ2 - waterZ < 0) refractUV = screenUV;
                 
-                float3 refractColor = SampleSceneColor(refractUV);
-                float3 depthColor = SAMPLE_TEXTURE2D(_RampTex, sampler_RampTex, float2(depthDiff, 0.5)).rgb;
+                float3 refractColor = SampleSceneColor(refractUV);// ËØªÂèñÂÅèÁßª‰ΩçÁΩÆÁöÑÁîªÈù¢
+                if (_WaterCaptureReady > 0.5)//Áõ∏ÂΩì‰∫éËøêË°åÊó∂ÂºÄÂÖ≥
+                {
+                    #if defined(UNITY_STEREO_INSTANCING_ENABLED) || defined(UNITY_STEREO_MULTIVIEW_ENABLED)
+                    refractColor = unity_StereoEyeIndex == 0
+                        ? SAMPLE_TEXTURE2D(_WaterRefractionLeft, sampler_WaterRefractionLeft, refractUV).rgb
+                        : SAMPLE_TEXTURE2D(_WaterRefractionRight, sampler_WaterRefractionRight, refractUV).rgb;
+                    #else
+                    refractColor = SAMPLE_TEXTURE2D(_WaterRefractionLeft, sampler_WaterRefractionLeft, refractUV).rgb;
+                    #endif
+                }
+                float3 depthColor = SAMPLE_TEXTURE2D(_RampTex, sampler_RampTex, float2(depthDiff, 0.5)).rgb;//Ê∑±Â∫¶ÊüìËâ≤Êù°
 
-                // ===== 4. π‚’’º∆À„ =====
+                // ===== 4. ÂÖâÁÖßËÆ°ÁÆó =====
                 half3 lambert = LightingLambert(light.color, light.direction, normalWS);
                 half3 spec = LightingSpecular(light.color, light.direction, normalWS, viewDirWS, _SpecularColor, _Smoothness);
 
-                // ===== 5. ◊Ó÷’»⁄∫œ =====
-                // ∑∆ƒ˘∂˚Ω¸À∆£∫ÀÆ√Ê≤‡ø¥∑¥…‰«ø£¨∏© ”’€…‰«ø
+                // ===== 5. ÊúÄÁªàËûçÂêà =====
+                // Ëè≤Ê∂ÖÂ∞îËøë‰ººÔºöÊ∞¥Èù¢‰æßÁúãÂèçÂ∞ÑÂº∫Ôºå‰øØËßÜÊäòÂ∞ÑÂº∫
                 float fresnel = pow(1.0 - saturate(dot(normalWS, viewDirWS)), 3.0);
+                // A small face-on reflection lets Intensity respond from above.
+                float reflectionWeight = _ReflectionIntensity * (0.15 + 0.85 * fresnel);
                 
-                float3 waterBody = lerp(refractColor, depthColor * (lambert * _BaseColor.rgb + spec), depthDiff);
+                float3 waterTint = depthColor * _BaseColor.rgb * (0.55 + 0.45 * lambert);
+                float transmission = lerp(0.95, _RefractionVisibility, depthDiff) * seabedVisibility;
+                float3 waterBody = lerp(waterTint, refractColor, transmission);
                 
-                // Ω´∑¥…‰µ˛º”µΩÀÆÃÂ…œ
-                float3 finalColor = lerp(waterBody, reflection, fresnel * _ReflectionIntensity);
-                // º”…œ∏ﬂπ‚
-                finalColor += spec;
+                // Â∞ÜÂèçÂ∞ÑÂè†Âä†Âà∞Ê∞¥‰Ωì‰∏ä
+                float3 finalColor = lerp(waterBody, reflection, reflectionWeight);
+                if (_WaterCaptureReady > 0.5)
+                {
+                    float4 reflectedClip;
+                    #if defined(UNITY_STEREO_INSTANCING_ENABLED) || defined(UNITY_STEREO_MULTIVIEW_ENABLED)
+                    reflectedClip = mul(unity_StereoEyeIndex == 0 ? _WaterReflectionVPLeft : _WaterReflectionVPRight, float4(IN.positionWS, 1));
+                    #else
+                    reflectedClip = mul(_WaterReflectionVPLeft, float4(IN.positionWS, 1));
+                    #endif
+                    float2 reflectedUV = reflectedClip.xy / max(reflectedClip.w, 0.0001) * 0.5 + 0.5;
+                    reflectedUV += detailNormal * (0.015 * _ReflectionDistortion);
+                    if (reflectedClip.w > 0 && all(reflectedUV >= 0) && all(reflectedUV <= 1))
+                    {
+                        float3 sceneReflection;
+                        #if defined(UNITY_STEREO_INSTANCING_ENABLED) || defined(UNITY_STEREO_MULTIVIEW_ENABLED)
+                        sceneReflection = unity_StereoEyeIndex == 0
+                            ? SAMPLE_TEXTURE2D(_WaterReflectionLeft, sampler_WaterReflectionLeft, reflectedUV).rgb
+                            : SAMPLE_TEXTURE2D(_WaterReflectionRight, sampler_WaterReflectionRight, reflectedUV).rgb;
+                        #else
+                        sceneReflection = SAMPLE_TEXTURE2D(_WaterReflectionLeft, sampler_WaterReflectionLeft, reflectedUV).rgb;
+                        #endif
+                        finalColor = lerp(finalColor, sceneReflection, _PlanarReflectionStrength * reflectionWeight);
+                    }
+                }
+                // Âä†‰∏äÈ´òÂÖâ
+                finalColor += spec * 0.4;
+                float warmStreak = smoothstep(0.08, 0.38, n1.x + 0.45 * n1.y);
+                finalColor = lerp(finalColor, float3(0.94, 0.69, 0.35), warmStreak * _WarmStreakStrength * (0.7 + 0.3 * fresnel));
+                finalColor += warmStreak * warmStreak * 0.04;
 
-                return float4(finalColor, depthDiff);
+                return float4(finalColor, _WaterCaptureReady > 0.5 ? 1.0 : depthDiff);
             }
             ENDHLSL
         }
